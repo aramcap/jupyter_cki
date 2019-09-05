@@ -56,45 +56,60 @@
 #
 #
 
-import sys
+import os, sys, argparse
 from subprocess import call
 from tempfile import mkstemp
 from shutil import move
-from os import fdopen, remove, chmod
 
 # Call command
-def command(py_path, kernel_name):
-    return call([py_path+"/bin/python", "-m", "ipykernel", "install", "--name", kernel_name, "--prefix", py_path])
+def command(env_path, kernel_name):
+    return call([env_path+"/bin/python", "-m", "ipykernel", "install", "--name", kernel_name, "--prefix", env_path])
 
 # Secure replace line in file
 def replace(file_path, pattern, subst):
     fh, abs_path = mkstemp()
-    with fdopen(fh,'w') as new_file:
+    with os.fdopen(fh,'w') as new_file:
         with open(file_path) as old_file:
             for line in old_file:
                 new_file.write(line.replace(pattern, subst))
-    remove(file_path)
+    os.remove(file_path)
     move(abs_path, file_path)
     return True
 
-def help():
-    return "\nJupyter Custom Kernel Installer - Copyright (GNU GPL v3) 2019 https://github.com/aramcap/jupyter_cki\n\n\
-    How run: python jupyter_cki.py <PY_PATH> <KERNEL_NAME> <KERNEL_EXECUTOR>\n\
-        PY_PATH: Python path that Jupyter uses\n\
-        KERNEL_NAME: Kernel name for Jupyter\n\
-        KERNEL_EXECUTOR: Python path for Python binary in environment\n\
-\n\
-Example: python jupyter_cki.py /opt/conda/envs/tools python36 /opt/conda/envs/python36\n"
-
 if __name__ == "__main__":
-    if len(sys.argv) == 4:
-        PY_PATH = sys.argv[1]
-        KERNEL_NAME = sys.argv[2]
-        KERNEL_EXECUTOR = sys.argv[3]
+    parser = argparse.ArgumentParser(description='Jupyter Custom Kernel Installer - Copyright (GNU GPL v3) 2019 https://github.com/aramcap/jupyter_cki')
+    subparsers = parser.add_subparsers(help='Subcommands', dest="command")
+    parser_python = subparsers.add_parser('python', help='Install Python kernel')
+    parser_python.add_argument('--jupyter', action='store', help='Jupyter environment path')
+    parser_python.add_argument('--kernel', action='store', help='Python kernel environment path')
+    parser_python.add_argument('--kernel_name', action='store', help='Kernel name')
+    parser_ir = subparsers.add_parser('ir', help='Install IR kernel')
+    parser_ir.add_argument('--jupyter', action='store', help='Jupyter environment path')
+    parser_ir.add_argument('--kernel', action='store', help='IR kernel environment path')
+    args = parser.parse_args()
 
-        command(PY_PATH, KERNEL_NAME)
-        replace(PY_PATH+"/share/jupyter/kernels/"+KERNEL_NAME+"/kernel.json", PY_PATH, KERNEL_EXECUTOR)
-        chmod(PY_PATH+"/share/jupyter/kernels/"+KERNEL_NAME+"/kernel.json", 644)
+    if args.command == "python":
+        if args.jupyter == None or args.kernel == None or args.kernel_name == None:
+            parser_python.print_help()
+            sys.exit(2)
+        
+        ENV_PATH = args.jupyter
+        KERNEL_PATH = args.kernel
+        KERNEL_NAME = args.kernel_name
+
+        command(ENV_PATH, KERNEL_NAME)
+        replace(ENV_PATH+"/share/jupyter/kernels/"+KERNEL_NAME+"/kernel.json", ENV_PATH, KERNEL_PATH)
+        os.chmod(ENV_PATH+"/share/jupyter/kernels/"+KERNEL_NAME+"/kernel.json", 644)
+    elif args.command == "ir":
+        if args.jupyter == None or args.kernel == None:
+            parser_ir.print_help()
+            sys.exit(2)
+        
+        ENV_PATH = args.jupyter
+        KERNEL_PATH = args.kernel
+
+        replace(ENV_PATH+"/share/jupyter/kernels/ir/kernel.json", '["R"', '["'+os.path.join(KERNEL_PATH,"bin/R")+'"')
+        os.chmod(ENV_PATH+"/share/jupyter/kernels/ir/kernel.json", 644)
     else:
-        print(help())
-        exit(1)
+        parser.print_help()
+        sys.exit(2)
