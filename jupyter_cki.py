@@ -100,6 +100,7 @@ if __name__ == "__main__":
         command(ENV_PATH, KERNEL_NAME)
         replace(ENV_PATH+"/share/jupyter/kernels/"+KERNEL_NAME+"/kernel.json", ENV_PATH, KERNEL_PATH)
         os.chmod(ENV_PATH+"/share/jupyter/kernels/"+KERNEL_NAME+"/kernel.json", 644)
+        print("Kernel installed")
     elif args.command == "ir":
         if args.jupyter == None or args.kernel == None:
             parser_ir.print_help()
@@ -110,6 +111,7 @@ if __name__ == "__main__":
 
         replace(ENV_PATH+"/share/jupyter/kernels/ir/kernel.json", '["R"', '["'+os.path.join(KERNEL_PATH,"bin/R")+'"')
         os.chmod(ENV_PATH+"/share/jupyter/kernels/ir/kernel.json", 644)
+        print("Kernel installed")
     else:
         parser.print_help()
         sys.exit(2)
